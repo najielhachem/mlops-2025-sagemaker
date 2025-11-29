@@ -32,9 +32,3 @@ echo "Training model..."
 uv run python "$SCRIPTS/train.py" \
   --featurized_train "$DATA/features/train.csv" \
   --model_output "$ARTIFACTS/models/log_reg.pkl"
-
-echo "Evaluating model..."
-uv run python "$SCRIPTS/evaluate.py" \
-  --featurized_test "$DATA/features/test.csv" \
-  --model_path "$ARTIFACTS/models/log_reg.pkl" \
-  --metrics_output "$ARTIFACTS/metrics/train_eval.json"
