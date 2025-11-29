@@ -1,0 +1,20 @@
+[project]
+name = "mlops-2025-sagemaker"
+version = "0.1.0"
+description = "Add your description here"
+readme = "README.md"
+authors = [
+    { name = "najielhachem", email = "nagielhachem@gmail.com" }
+]
+requires-python = ">=3.11"
+dependencies = [
+    "pandas>=2.3.3",
+    "scikit-learn>=1.7.2",
+]
+
+[project.scripts]
+mlops-2025-sagemaker = "mlops_2025_sagemaker:main"
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
