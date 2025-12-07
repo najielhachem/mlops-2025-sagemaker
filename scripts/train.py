@@ -1,55 +1,96 @@
 """
 Train a baseline model for Titanic survival prediction.
-Loads featurized train data, trains a LogisticRegression, and saves the model for later use.
+Loads featurized train/test data, trains a LogisticRegression,
+evaluates it, and saves the model for later use.
 """
 
 import argparse
-from pathlib import Path
-import pandas as pd
+import os
 import pickle
-from sklearn.linear_model import LogisticRegression
-from sklearn.model_selection import train_test_split
-from sklearn.metrics import accuracy_score
-import warnings
+from pathlib import Path
 
-warnings.filterwarnings("ignore")
+import pandas as pd
+from sklearn.linear_model import LogisticRegression
+from sklearn.metrics import accuracy_score
+
+TARGET_COLUMN = "Survived"
+
+
+def parse_args():
+    parser = argparse.ArgumentParser(
+        description="Train baseline Titanic survival model"
+    )
+
+    # Data directories: default to SageMaker channels
+    parser.add_argument(
+        "--train-dir",
+        type=str,
+        default=os.environ.get("SM_CHANNEL_TRAIN"),
+        help="Directory containing featurized training data (train.csv)",
+    )
+    parser.add_argument(
+        "--test-dir",
+        type=str,
+        default=os.environ.get("SM_CHANNEL_TEST"),
+        help="Directory containing featurized test data (test.csv)",
+    )
+
+    # Model output directory: default to SageMaker model dir
+    parser.add_argument(
+        "--model-dir",
+        type=str,
+        default=os.environ.get("SM_MODEL_DIR"),
+        help="Directory where the trained model will be saved",
+    )
+
+    # Optional hyperparameters
+    parser.add_argument("--max-iter", type=int, default=1000)
+    parser.add_argument("--random-state", type=int, default=42)
+
+    return parser.parse_args()
 
 
 def main():
-    parser = argparse.ArgumentParser(description="Train baseline Titanic survival model")
-    parser.add_argument("--featurized_train", type=str, required=True, help="Path to featurized train CSV")
-    parser.add_argument("--model_output", type=str, required=True, help="Path to save trained model (pickle)")
-    parser.add_argument("--test_size", type=float, default=0.2, help="Fraction of data to use for validation")
-    parser.add_argument("--random_state", type=int, default=42, help="Random seed")
+    args = parse_args()
 
-    args = parser.parse_args()
+    # --- Load featurized train data ---
+    train_path = os.path.join(args.train_dir, "train.csv")
+    test_path = os.path.join(args.test_dir, "test.csv")
 
-    # Load featurized train data
-    df = pd.read_csv(args.featurized_train)
-    X = df.drop(columns=["Survived"])
-    y = df["Survived"]
+    print(f"Reading train data from: {train_path}")
+    print(f"Reading test data from: {test_path}")
 
-    # Split into train/validation
-    X_train, X_val, y_train, y_val = train_test_split(
-        X, y, test_size=args.test_size, random_state=args.random_state, stratify=y
+    df_train = pd.read_csv(train_path)
+    df_test = pd.read_csv(test_path)
+
+    X_train = df_train.drop(columns=[TARGET_COLUMN])
+    y_train = df_train[TARGET_COLUMN]
+
+    X_test = df_test.drop(columns=[TARGET_COLUMN])
+    y_test = df_test[TARGET_COLUMN]
+
+    # --- Train baseline Logistic Regression ---
+    model = LogisticRegression(
+        max_iter=args.max_iter,
+        random_state=args.random_state,
     )
-
-    # Train baseline Logistic Regression
-    model = LogisticRegression(max_iter=1000, random_state=args.random_state)
     model.fit(X_train, y_train)
 
-    # Evaluate on validation set
-    y_pred = model.predict(X_val)
-    acc = accuracy_score(y_val, y_pred)
-    print(f"Validation Accuracy: {acc:.4f}")
+    # --- Evaluate on test set ---
+    y_pred = model.predict(X_test)
+    acc = accuracy_score(y_test, y_pred)
+    print(f"Test Accuracy: {acc:.4f}")
 
-    # Save trained model
-    Path(args.model_output).parent.mkdir(parents=True, exist_ok=True)
-    with open(args.model_output, "wb") as f:
+    # --- Save trained model ---
+    model_dir = args.model_dir
+    Path(model_dir).mkdir(parents=True, exist_ok=True)
+    model_path = os.path.join(model_dir, "model.pkl")
+
+    with open(model_path, "wb") as f:
         pickle.dump(model, f)
-    print(f"Trained model saved to: {args.model_output}")
+
+    print(f"Trained model saved to: {model_path}")
 
 
 if __name__ == "__main__":
     main()
-
