@@ -118,56 +118,70 @@ def featurize(train_df, test_df, pipeline_save_path):
 def main():
     parser = argparse.ArgumentParser(description="Featurize Titanic dataset")
     parser.add_argument(
-        "--train_path", type=str, required=True, help="Path to preprocessed train CSV"
-    )
-    parser.add_argument(
-        "--test_path", type=str, required=True, help="Path to preprocessed test CSV"
-    )
-    parser.add_argument(
-        "--output_train",
+        "--input-dir",
         type=str,
         required=True,
-        help="Path to save featurized train CSV",
+        help="Input directory containing preprocessed `train.csv` and `test.csv`",
     )
     parser.add_argument(
-        "--output_test",
+        "--output-dir",
         type=str,
         required=True,
-        help="Path to save featurized test CSV",
+        help="Output directory to write featurized `train.csv` and `test.csv`",
     )
     parser.add_argument(
-        "--output_transformer",
+        "--artifacts-dir",
         type=str,
         required=True,
-        help="Path to save fitted transformer",
+        help="Directory to save artifacts (fitted transformer)",
     )
 
     args = parser.parse_args()
 
+    input_dir = Path(args.input_dir)
+    output_dir = Path(args.output_dir)
+    artifacts_dir = Path(args.artifacts_dir)
+
+    # Build expected file paths
+    train_path = input_dir / "train.csv"
+    test_path = input_dir / "test.csv"
+
+    # Ensure input files exist
+    if not train_path.exists():
+        raise FileNotFoundError(f"Preprocessed train file not found: {train_path}")
+    if not test_path.exists():
+        raise FileNotFoundError(f"Preprocessed test file not found: {test_path}")
+
+    # Create output and artifacts directories if they don't exist
+    output_dir.mkdir(parents=True, exist_ok=True)
+    artifacts_dir.mkdir(parents=True, exist_ok=True)
+
+    output_train = output_dir / "train.csv"
+    output_test = output_dir / "test.csv"
+    transformer_path = artifacts_dir / "feature_pipeline.joblib"
+
     # Load preprocessed CSVs
-    train_df = pd.read_csv(args.train_path)
-    test_df = pd.read_csv(args.test_path)
+    train_df = pd.read_csv(train_path)
+    test_df = pd.read_csv(test_path)
 
     # Featurize
     X_train_transformed, y_train, X_test_transformed, y_test, feature_names = featurize(
-        train_df, test_df, args.output_transformer
+        train_df, test_df, transformer_path
     )
 
     # Save transformed train (with target) and keep column names
     train_out = pd.DataFrame(X_train_transformed, columns=feature_names)
     train_out["Survived"] = y_train.values
-    Path(args.output_train).parent.mkdir(parents=True, exist_ok=True)
-    train_out.to_csv(args.output_train, index=False)
-    print(f"Saved featurized train to: {args.output_train}")
+    train_out.to_csv(output_train, index=False)
+    print(f"Saved featurized train to: {output_train}")
 
     # Save transformed test and keep column names
     test_out = pd.DataFrame(X_test_transformed, columns=feature_names)
     if y_test is not None:
         test_out["Survived"] = y_test.values  # Only add Survived if it exists
 
-    Path(args.output_test).parent.mkdir(parents=True, exist_ok=True)
-    test_out.to_csv(args.output_test, index=False)
-    print(f"Saved featurized test to: {args.output_test}")
+    test_out.to_csv(output_test, index=False)
+    print(f"Saved featurized test to: {output_test}")
 
     print("Featurization complete.")
     print("Train shape (with target):", train_out.shape)
