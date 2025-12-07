@@ -15,7 +15,9 @@ warnings.filterwarnings("ignore")
 
 def load_data(train_path, test_path):
     """Load training and test datasets."""
+    print(f"Loading data from {train_path}")
     train = pd.read_csv(train_path)
+    print(f"Loading data from {test_path}")
     test = pd.read_csv(test_path)
     return train, test
 
@@ -60,32 +62,41 @@ def split_data(df):
 def main():
     parser = argparse.ArgumentParser(description="Preprocess Titanic dataset")
     parser.add_argument(
-        "--train_path", type=str, required=True, help="Path to training CSV file"
-    )
-    parser.add_argument(
-        "--test_path", type=str, required=True, help="Path to test CSV file"
-    )
-    parser.add_argument(
-        "--output_train",
+        "--input-dir",
         type=str,
         required=True,
-        help="Output path for preprocessed training data",
+        help="Input directory containing `train.csv` and `test.csv`",
     )
     parser.add_argument(
-        "--output_test",
+        "--output-dir",
         type=str,
         required=True,
-        help="Output path for preprocessed test data",
+        help="Output directory to write preprocessed `train.csv` and `test.csv`",
     )
 
     args = parser.parse_args()
 
-    # Create output directories if they don't exist
-    Path(args.output_train).parent.mkdir(parents=True, exist_ok=True)
-    Path(args.output_test).parent.mkdir(parents=True, exist_ok=True)
+    input_dir = Path(args.input_dir)
+    output_dir = Path(args.output_dir)
+
+    # Build expected file paths
+    train_path = input_dir / "train.csv"
+    test_path = input_dir / "test.csv"
+
+    # Ensure input files exist
+    if not train_path.exists():
+        raise FileNotFoundError(f"Training file not found: {train_path}")
+    if not test_path.exists():
+        raise FileNotFoundError(f"Test file not found: {test_path}")
+
+    # Create output directory if it doesn't exist
+    output_dir.mkdir(parents=True, exist_ok=True)
+
+    output_train = output_dir / "train.csv"
+    output_test = output_dir / "test.csv"
 
     print("Loading data...")
-    train, test = load_data(args.train_path, args.test_path)
+    train, test = load_data(train_path, test_path)
     print(f"Loaded train: {train.shape}, test: {test.shape}")
 
     print("Cleaning data...")
@@ -95,11 +106,11 @@ def main():
     train_processed, test_processed = split_data(df)
 
     print("Saving preprocessed data...")
-    train_processed.to_csv(args.output_train, index=False)
-    test_processed.to_csv(args.output_test, index=False)
+    train_processed.to_csv(output_train, index=False)
+    test_processed.to_csv(output_test, index=False)
 
-    print(f"Preprocessed train saved to: {args.output_train}")
-    print(f"Preprocessed test saved to: {args.output_test}")
+    print(f"Preprocessed train saved to: {output_train}")
+    print(f"Preprocessed test saved to: {output_test}")
     print(f"Final train shape: {train_processed.shape}")
     print(f"Final test shape: {test_processed.shape}")
 
